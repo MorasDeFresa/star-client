@@ -46,7 +46,8 @@ export default function TablaPersonajes({
   });
 
   const conexion = data?.allPeople;
-  const cargandoMas = networkStatus === NetworkStatus.fetchMore;  const enBusqueda = resultadosBusqueda !== undefined;
+  const enBusqueda = resultadosBusqueda !== undefined;
+  const cargandoMas = networkStatus === NetworkStatus.fetchMore;
 
   const pagina: PersonajeResumen[] = enBusqueda
     ? resultadosBusqueda
@@ -68,9 +69,17 @@ export default function TablaPersonajes({
 
   return (
     <Stack spacing={2}>
-      <Typography variant="body2" color="text.secondary" aria-live="polite">
+      {/* `aria-live` para que el cambio de "Mostrando 10" a "Mostrando 20" al
+          hacer scroll se anuncie. Con la busqueda es lo que comunica el
+          resultado. `tabular-nums` evita que el ancho de la fila se mueva. */}
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        aria-live="polite"
+        sx={{ fontVariantNumeric: "tabular-nums" }}
+      >
         {enBusqueda
-          ? `${pagina.length} de ${paginaInicial.total} personajes coinciden con la busqueda`
+          ? `${pagina.length} de ${total} personajes coinciden con la busqueda`
           : `Mostrando ${pagina.length} de ${total} personajes`}
       </Typography>
 
