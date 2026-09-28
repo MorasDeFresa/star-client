@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     template: "%s | Star Wars",
   },
   description:
-    "Explora los personajes del universo Star Wars, sus peliculas, los directores y los planetas donde aparecen.",
+    "Explora los personajes del universo Star Wars, sus películas, los directores y los planetas donde aparecen.",
   openGraph: {
     type: "website",
     siteName: "Star Wars",

@@ -16,7 +16,7 @@ import type { PersonajeDetalle } from "@/lib/datos/tipos_vista";
 
 export default function VistaDetalle({ personaje }: { personaje: PersonajeDetalle }) {
   const campos = [
-    { etiqueta: "Genero", valor: formatear_genero(personaje.genero) },
+    { etiqueta: "Género", valor: formatear_genero(personaje.genero) },
     { etiqueta: "Nacimiento", valor: formatear_nacimiento(personaje.anioNacimiento) },
     { etiqueta: "Altura", valor: formatear_altura(personaje.alturaCm) },
     { etiqueta: "Masa", valor: formatear_masa(personaje.masaKg) },
@@ -39,12 +39,12 @@ export default function VistaDetalle({ personaje }: { personaje: PersonajeDetall
             guion suelto debajo del nombre, el subtitulo dice lo que si se sabe. */}
         {personaje.planetaNatal ? (
           <Typography variant="body1" color="text.secondary">
-            Nacio en {personaje.planetaNatal.nombre}
+            Nació en {personaje.planetaNatal.nombre}
           </Typography>
         ) : (
           <Typography variant="body1" color="text.secondary">
             {personaje.peliculas.length}{" "}
-            {personaje.peliculas.length === 1 ? "pelicula" : "peliculas"} de la saga original y las
+            {personaje.peliculas.length === 1 ? "película" : "películas"} de la saga original y las
             tres prequelas.
           </Typography>
         )}
@@ -52,8 +52,8 @@ export default function VistaDetalle({ personaje }: { personaje: PersonajeDetall
 
       {!personaje.datosCompletos && (
         <Alert severity="info" variant="outlined">
-          El API publico devuelve los personajes sin sus campos descriptivos. Esta ficha se ha
-          reconstruido a partir de las peliculas del personaje, asi que la altura, el color de ojos
+          El API público devuelve los personajes sin sus campos descriptivos. Esta ficha se ha
+          reconstruido a partir de las películas del personaje, así que la altura, el color de ojos
           o la especie no son fiables.
         </Alert>
       )}
@@ -71,12 +71,12 @@ export default function VistaDetalle({ personaje }: { personaje: PersonajeDetall
       <Stack spacing={2}>
         <Typography variant="h2" component="h2">
           Aparece en {personaje.peliculas.length}{" "}
-          {personaje.peliculas.length === 1 ? "pelicula" : "peliculas"}
+          {personaje.peliculas.length === 1 ? "película" : "películas"}
         </Typography>
 
         {personaje.peliculas.length === 0 ? (
           <Typography variant="body1" color="text.secondary">
-            Este personaje no aparece en ninguna pelicula del archivo.
+            Este personaje no aparece en ninguna película del archivo.
           </Typography>
         ) : (
           personaje.peliculas.map((pelicula) => (
@@ -91,7 +91,7 @@ export default function VistaDetalle({ personaje }: { personaje: PersonajeDetall
         <Stack spacing={1.5}>
           <Divider />
           <Typography variant="h2" component="h2">
-            Naves y vehiculos
+            Naves y vehículos
           </Typography>
           <Typography variant="body1" color="text.secondary">
             {personaje.naves.map((nave) => nave.nombre).join(", ")}

@@ -17,7 +17,7 @@ export default function Error({
   return (
     <EstadoError
       titulo="No se pudo cargar el listado de personajes"
-      detalle="El API publico de SWAPI puede no estar disponible en este momento."
+      detalle="El API público de SWAPI puede no estar disponible en este momento."
       onReintentar={retry}
     />
   );
