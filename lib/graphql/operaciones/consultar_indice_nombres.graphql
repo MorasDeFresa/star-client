@@ -1,0 +1,9 @@
+query ConsultarIndiceNombres {
+  allPeople {
+    totalCount
+    people {
+      id
+      name
+    }
+  }
+}

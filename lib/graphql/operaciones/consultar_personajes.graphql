@@ -1,0 +1,15 @@
+query ConsultarPersonajes($first: Int!, $after: String) {
+  allPeople(first: $first, after: $after) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    people {
+      id
+      name
+      gender
+      birthYear
+    }
+  }
+}
