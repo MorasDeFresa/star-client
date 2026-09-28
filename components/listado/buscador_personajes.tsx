@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import ClearIcon from "@mui/icons-material/Clear";
 import SearchIcon from "@mui/icons-material/Search";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -8,24 +8,27 @@ import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import TextField from "@mui/material/TextField";
 import { use_buscador_con_debounce } from "@/hooks/use_buscador_con_debounce";
+import { escribir_consulta, use_consulta_de_la_url } from "@/hooks/use_consulta_de_la_url";
 
 export const RETRASO_BUSQUEDA_MS = 300;
 
-export default function BuscadorPersonajes({ onBuscar }: { onBuscar: (texto: string) => void }) {
-  const [texto, set_texto] = useState("");
-  const [consulta, esperando] = use_buscador_con_debounce(texto, RETRASO_BUSQUEDA_MS);
-  const id = useId();
+export default function BuscadorPersonajes() {
+  const consulta = use_consulta_de_la_url();
+  const [texto, set_texto] = useState(consulta);
+  const [consulta_aplicada, set_consulta_aplicada] = useState(consulta);
+  const [valor_retrasado, esperando] = use_buscador_con_debounce(texto, RETRASO_BUSQUEDA_MS);
+
+  if (consulta !== consulta_aplicada) {
+    set_consulta_aplicada(consulta);
+    set_texto(consulta);
+  }
 
   useEffect(() => {
-    onBuscar(consulta);
-    // `onBuscar` suele ser un `setState` del padre, estable entre renders. Si
-    // se recreara, el efecto reventaria el debounce y volveria a filtrar en
-    // cada tecla, que es justo lo que se quiere evitar.
-  }, [consulta, onBuscar]);
+    if (valor_retrasado !== consulta) escribir_consulta(valor_retrasado);
+  }, [valor_retrasado, consulta]);
 
   return (
     <TextField
-      id={id}
       label="Buscar por nombre"
       value={texto}
       onChange={(evento) => set_texto(evento.target.value)}

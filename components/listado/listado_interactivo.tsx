@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import Stack from "@mui/material/Stack";
+import { use_consulta_de_la_url } from "@/hooks/use_consulta_de_la_url";
 import type { IndiceNombres, PaginaPersonajes, PersonajeResumen } from "@/lib/datos/tipos_vista";
 import BuscadorPersonajes from "./buscador_personajes";
 import TablaPersonajes from "./tabla_personajes";
@@ -13,9 +14,7 @@ export default function ListadoInteractivo({
   paginaInicial: PaginaPersonajes;
   indiceNombres: IndiceNombres;
 }) {
-  const [consulta, set_consulta] = useState("");
-
-  const al_buscar = useCallback((texto: string) => set_consulta(texto), []);
+  const consulta = use_consulta_de_la_url();
 
   const resultados = useMemo<PersonajeResumen[] | undefined>(() => {
     const termino = consulta.trim().toLowerCase();
@@ -33,7 +32,7 @@ export default function ListadoInteractivo({
 
   return (
     <Stack spacing={3}>
-      <BuscadorPersonajes onBuscar={al_buscar} />
+      <BuscadorPersonajes />
       <TablaPersonajes paginaInicial={paginaInicial} resultadosBusqueda={resultados} />
     </Stack>
   );
