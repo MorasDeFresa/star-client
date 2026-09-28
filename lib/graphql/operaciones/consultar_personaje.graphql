@@ -9,10 +9,6 @@ query ConsultarPersonaje($id: ID!) {
     eyeColor
     hairColor
     skinColor
-    homeworld {
-      id
-      name
-    }
     species {
       id
       name

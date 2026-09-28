@@ -3,38 +3,45 @@ import {
   ConsultarPersonajeDocument,
   type ConsultarPersonajeQuery,
 } from "@/lib/graphql/generados/graphql";
+import { obtener_indice_nombres } from "./obtener_indice_nombres";
 import { obtener_indice_peliculas } from "./obtener_indice_peliculas";
-import { normalizar_personaje, normalizar_pelicula } from "./normalizar_datos";
-import type { PeliculaDetalle, PersonajeDetalle } from "./tipos_vista";
+import { normalizar_pelicula, normalizar_personaje } from "./normalizar_datos";
+import type { PeliculaDetalle } from "./tipos_vista";
 
-type PersonajeApi = NonNullable<ConsultarPersonajeQuery["person"]>;
-type PeliculasApi = Exclude<NonNullable<PersonajeApi["filmConnection"]>["films"], null | undefined>;
-type PeliculaApi = Exclude<PeliculasApi[number], null>;
+export const obtener_personaje = deduplicar(async (id: string) => {
+  const [indiceNombres, indicePeliculas] = await Promise.all([
+    obtener_indice_nombres(),
+    obtener_indice_peliculas(),
+  ]);
 
-function tiene_datos_descriptivos(personaje: PersonajeApi): boolean {
-  return Boolean(personaje.gender || personaje.birthYear || personaje.homeworld);
-}
+  const nombre = indiceNombres.entradas.find((entrada) => entrada.id === id)?.nombre;
+  const desdeApi = await consultar_personaje_opcional(id);
 
-function peliculas_de_la_conexion(films: PeliculasApi): PeliculaDetalle[] {
-  return films.filter((pelicula): pelicula is PeliculaApi => pelicula != null).map(normalizar_pelicula);
-}
+  if (nombre === undefined && !desdeApi) return null;
 
-async function consultar_personaje_api(id: string) {
-  return consultar_apollo({ query: ConsultarPersonajeDocument, variables: { id } });
-}
-
-export const obtener_personaje = deduplicar(async (id: string): Promise<PersonajeDetalle | null> => {
-  const { data } = await consultar_personaje_api(id);
-  const personaje = data?.person;
-
-  if (!personaje) return null;
-
-  const peliculasConexion = peliculas_de_la_conexion(personaje.filmConnection?.films ?? []);
-  if (peliculasConexion.length > 0) {
-    return normalizar_personaje(personaje, peliculasConexion, true);
+  const peliculas: PeliculaDetalle[] = peliculas_de_la_conexion(desdeApi);
+  if (peliculas.length === 0) {
+    peliculas.push(...(indicePeliculas.get(id) ?? []));
   }
 
-  const peliculasDelIndice = (await obtener_indice_peliculas()).get(personaje.id) ?? [];
-
-  return normalizar_personaje(personaje, peliculasDelIndice, tiene_datos_descriptivos(personaje));
+  return normalizar_personaje(id, nombre ?? desdeApi?.name ?? null, desdeApi, peliculas);
 });
+
+type PersonajeApi = NonNullable<ConsultarPersonajeQuery["person"]>;
+
+async function consultar_personaje_opcional(id: string): Promise<PersonajeApi | null> {
+  try {
+    const { data } = await consultar_apollo({ query: ConsultarPersonajeDocument, variables: { id } });
+    return data?.person ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function peliculas_de_la_conexion(personaje: PersonajeApi | null): PeliculaDetalle[] {
+  const films = personaje?.filmConnection?.films;
+  if (!films) return [];
+  return films
+    .filter((pelicula): pelicula is NonNullable<typeof pelicula> => pelicula != null)
+    .map(normalizar_pelicula);
+}
