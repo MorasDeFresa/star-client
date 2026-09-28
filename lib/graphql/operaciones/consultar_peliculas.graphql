@@ -1,0 +1,26 @@
+query ConsultarPeliculas {
+  allFilms {
+    totalCount
+    films {
+      id
+      title
+      episodeID
+      director
+      releaseDate
+      planetConnection {
+        totalCount
+        planets {
+          id
+          name
+        }
+      }
+      characterConnection {
+        totalCount
+        characters {
+          id
+          name
+        }
+      }
+    }
+  }
+}

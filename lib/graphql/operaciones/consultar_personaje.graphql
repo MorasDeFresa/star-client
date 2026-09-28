@@ -1,0 +1,49 @@
+query ConsultarPersonaje($id: ID!) {
+  person(id: $id) {
+    id
+    name
+    gender
+    birthYear
+    height
+    mass
+    eyeColor
+    hairColor
+    skinColor
+    homeworld {
+      id
+      name
+    }
+    species {
+      id
+      name
+    }
+    starshipConnection {
+      totalCount
+      starships {
+        id
+        name
+      }
+    }
+    filmConnection {
+      totalCount
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      films {
+        id
+        title
+        episodeID
+        director
+        releaseDate
+        planetConnection {
+          totalCount
+          planets {
+            id
+            name
+          }
+        }
+      }
+    }
+  }
+}
