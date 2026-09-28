@@ -43,9 +43,4 @@ export function formatear_episodio(episodio: number | null): string | null {
   return `Episodio ${episodio}`;
 }
 
-export function resumir_generos(generos: (string | null)[]): string | null {
-  const validos = [...new Set(generos.filter((g): g is string => !es_vacio(g)))];
-  return validos.length > 0 ? validos.join(" · ") : null;
-}
-
 export { SIN_DATO };
