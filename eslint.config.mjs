@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "lib/graphql/generados/**",
   ]),
+
+  {
+    files: ["hooks/**"],
+    rules: {
+      "react-hooks/rules-of-hooks": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

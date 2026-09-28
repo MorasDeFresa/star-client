@@ -1,9 +1,8 @@
 import { deduplicar, consultar_apollo } from "@/lib/graphql/cliente_apollo_servidor";
 import { ConsultarPersonajesDocument } from "@/lib/graphql/generados/graphql";
 import { normalizar_pagina_personajes } from "./normalizar_datos";
+import { TAMANO_PAGINA } from "./tamano_pagina";
 import type { PaginaPersonajes } from "./tipos_vista";
-
-export const TAMANO_PAGINA = 10;
 
 export const obtener_personajes = deduplicar(
   async (opciones: { after?: string | null; first?: number } = {}): Promise<PaginaPersonajes> => {
