@@ -2,7 +2,7 @@
 
 import NextLink from "next/link";
 import type { Route } from "next";
-import Button from "@mui/material/Button";
+import Link from "@mui/material/Link";
 import TableCell from "@mui/material/TableCell";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
@@ -11,16 +11,25 @@ import type { PersonajeResumen } from "@/lib/datos/tipos_vista";
 
 export default function FilaPersonaje({ personaje }: { personaje: PersonajeResumen }) {
   return (
-    <TableRow
-      component={NextLink}
-      href={`/personajes/${personaje.id}` as Route}
-      hover
-      sx={{ textDecoration: "none" }}
-      aria-label={`Ver el detalle de ${personaje.nombre}`}
-    >
+    <TableRow hover sx={{ position: "relative" }}>
       <TableCell component="th" scope="row">
-        <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
-          {personaje.nombre}
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 600, color: "text.primary", display: "inline-block" }}
+        >
+          <Link
+            component={NextLink}
+            href={`/personajes/${personaje.id}` as Route}
+            aria-label={`Ver el detalle de ${personaje.nombre}`}
+            underline="hover"
+            color="inherit"
+            sx={{
+              textDecoration: "none",
+              "&::after": { content: '""', position: "absolute", inset: 0 },
+            }}
+          >
+            {personaje.nombre}
+          </Link>
         </Typography>
       </TableCell>
       <TableCell>
@@ -34,9 +43,15 @@ export default function FilaPersonaje({ personaje }: { personaje: PersonajeResum
         </Typography>
       </TableCell>
       <TableCell align="right">
-        <Button size="small" variant="text" tabIndex={-1} aria-hidden>
+        {/* Solo texto: el `::after` del enlace ya cubre esta celda, asi que un
+            boton aqui seria un segundo control que no lleva a ninguna parte. */}
+        <Typography
+          variant="body2"
+          aria-hidden
+          sx={{ color: "primary.main", fontWeight: 600, pointerEvents: "none" }}
+        >
           Ver detalle
-        </Button>
+        </Typography>
       </TableCell>
     </TableRow>
   );
