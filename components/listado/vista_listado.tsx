@@ -21,7 +21,7 @@ export default async function VistaListado() {
         </Typography>
         <Typography variant="body1" color="text.secondary">
           Los {pagina.total} personajes del universo Star Wars. Abre cualquiera para ver las
-          peliculas en las que participa, sus directores y los planetas donde aparece.
+          películas en las que participa, sus directores y los planetas donde aparece.
         </Typography>
       </Stack>
 

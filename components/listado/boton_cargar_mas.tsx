@@ -21,7 +21,7 @@ export default function BotonCargarMas({
         variant="outlined"
         startIcon={cargando ? <CircularProgress size={16} color="inherit" /> : undefined}
       >
-        {cargando ? "Cargando mas personajes" : "Cargar mas personajes"}
+        {cargando ? "Cargando más personajes" : "Cargar más personajes"}
       </Button>
     </Stack>
   );

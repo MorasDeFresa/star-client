@@ -1,36 +1,146 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Star Wars - Archivo de personajes
 
-## Getting Started
+Archivo de personajes del universo Star Wars construido con **Next.js 16** (App
+Router), **React 19**, **MUI 9** y **Apollo Client 4**, sobre el GraphQL público
+de [SWAPI](https://github.com/trevorharrington/swapi-graphql).
 
-First, run the development server:
+Listado paginado con scroll infinito, ficha de detalle por personaje y buscador
+con debounce que se refleja en la URL.
+
+## Puesta en marcha
 
 ```bash
+npm install
+cp .env.example .env.local
+npm run codegen   # descarga el schema y genera los tipos
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+En [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`npm run codegen` necesita red: descarga el schema del endpoint real en vez de
+mantener una copia local, para que los tipos no puedan quedar desincronizados. Si
+el endpoint no responde, el comando falla en lugar de generar tipos falsos. Los
+tipos generados quedan versionados en `lib/graphql/generados/`, así que solo hace
+falta ejecutarlo cuando cambia el schema o alguna operación de
+`lib/graphql/operaciones/`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+| Script              | Qué hace                                                  |
+| ------------------- | --------------------------------------------------------- |
+| `npm run dev`       | Servidor de desarrollo                                    |
+| `npm run build`     | Build de producción (ejecuta `tsc`, así que también tipa)  |
+| `npm run start`     | Sirve el build de producción                              |
+| `npm run lint`      | ESL plano sobre el proyecto entero                        |
+| `npm run typecheck` | `tsc --noEmit`                                            |
+| `npm run test`      | Suite de Vitest en modo watch-free, una sola ejecución     |
+| `npm run test:watch`| Vitest en watch                                            |
+| `npm run codegen`   | Regenera los tipos de GraphQL                             |
 
-To learn more about Next.js, take a look at the following resources:
+## Variables de entorno
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Todas tienen valor por defecto, así que la aplicación arranca sin `.env.local`.
+Están documentadas en `.env.example`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Variable                       | Para qué sirve                                                        |
+| ------------------------------ | --------------------------------------------------------------------- |
+| `SWAPI_GRAPHQL_URL`            | Endpoint que usa el cliente Apollo del servidor y el generador de tipos |
+| `NEXT_PUBLIC_SWAPI_GRAPHQL_URL`| El mismo endpoint, expuesto al bundle para paginar en el cliente       |
+| `NEXT_PUBLIC_ORIGIN`           | Origen con el que se construye `metadataBase`                         |
 
-## Deploy on Vercel
+## Cómo funciona
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Los datos pasan siempre por el servidor
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+El API bloquea las peticiones que llegan del navegador por CORS, así que la
+consulta inicial se hace en el servidor y se serializa en la caché de Apollo,
+que viaja en el HTML. El cliente de Apollo solo interviene a partir de ahí, para
+el scroll infinito. Un cliente puramente en el navegador no funcionaría.
+
+### La búsqueda vive en la URL
+
+Escribir en el buscador reescribe `?q=` con `history.replaceState` en lugar de
+hacer un `router.push`. Dos consecuencias: la página `/` sigue siendo estática y
+se revalida cada 5 minutos, y el botón de atrás del navegador no acumula una
+entrada por pulsación. Un enlace `/?q=vader` abre el listado ya filtrado.
+
+`replaceState` no emite `popstate`, así que el hook de la URL también despacha un
+evento propio: sin eso, el input y la tabla se desincronizarían al escribir.
+
+### La fila es un enlace de verdad
+
+Abrir una ficha es navegar a `/personajes/{id}`, no un `onClick` con
+`router.push`. El enlace vive dentro de la celda del nombre y se estira sobre la
+fila con un `::after`. No se hace al revés porque un `<a>` no puede contener
+`<th>` ni `<td>`, y porque MUI impondría `role="row"` al `<a>`, que perdería el
+rol de enlace.
+
+`/personajes/[id]` es dinámica, así que el botón de volver comprueba si la
+entrada la gestionó Next antes de usar `router.back()`. Si el usuario llegó por
+un enlace externo, `history` está vacío y `back()` no haría nada: en ese caso
+vuelve al listado.
+
+### La ficha se compone con dos fuentes
+
+`person(id:)` falla en el API público con
+`No entry in local cache for https://www.swapi.tech/api/people/...`, y `allPeople`
+solo devuelve `id` y `name` con valor real: el resto llega como `null` o como las
+cadenas `"n/a"` y `"unknown"`.
+
+Por eso la ficha se monta con el índice de nombres (para la identidad) y el
+índice invertido de `allFilms` (para las apariciones), y la consulta a
+`person(id:)` se mantiene solo como enriquecimiento opcional, dentro de un
+`try/catch` que degrada en silencio. Cuando el API añada esos campos, aparecerán
+sin tocar el código. La interfaz avisa de que los guiones vacíos son una
+limitación del origen, no un dato real.
+
+Por el mismo motivo la operación no pide `homeworld`: el campo existe en el
+schema, pero el resolver lo rechaza y hace fallar la consulta entera.
+
+### Accesibilidad
+
+Las celdas sin dato muestran `—` en lugar de una cadena vacía, para que un lector
+de pantalla no las anuncie como si tuvieran contenido. El nombre de cada fila es
+el encabezado de fila (`th` con `scope="row"`), el contador de resultados va en
+una región `aria-live="polite"` para que se anuncie el cambio de «Mostrando 10» a
+«Mostrando 20», y el scroll infinito tiene además un botón «Cargar más»: quien
+navegue con teclado o con lectores que no disparan `IntersectionObserver` no se
+queda sin forma de avanzar.
+
+## Pruebas
+
+```bash
+npm run test
+```
+
+58 pruebas con Vitest y Testing Library sobre `jsdom`:
+
+- **Formateadores** — que `null`, `"n/a"` y `"unknown"` acaben en el mismo sitio, y
+  que un `0` se trate como dato y no como ausencia.
+- **Normalizado** — el contrato entre los tipos generados y el modelo que consume
+  la interfaz, incluidos los huecos dentro de un array.
+- **Hooks** — el debounce con relojes falsos (incluida una racha de pulsaciones) y
+  las tres puertas de la URL: la aplicación, la escritura a mano y el `popstate`.
+- **Componentes** — el buscador escribiendo en la URL tras el retardo, y la fila sin
+  HTML inválido ni pérdida del rol de enlace.
+
+No se prueban los Server Components asíncronos con Vitest; la guía de Next lo
+desaconseja. Esos caminos se comprueban levantando el servidor.
+
+## Despliegue
+
+Pensado para Vercel: `npm run build` y `npm run start` no necesitan más
+configuración, y el proyecto no usa nada específico de otra plataforma.
+
+Antes del primer despliegue hay que definir `SWAPI_GRAPHQL_URL`,
+`NEXT_PUBLIC_SWAPI_GRAPHQL_URL` y `NEXT_PUBLIC_ORIGIN` en las variables del
+proyecto, con el dominio real en `NEXT_PUBLIC_ORIGIN` para que las URLs
+canónicas y de Open Graph sean correctas.
+
+Dos detalles del build que conviene conocer:
+
+- La ruta `/` se genera como estática con revalidación cada 5 minutos.
+- Si el despliegue vive en un subdirectorio, hay que fijar `turbopack.root` y
+  `outputFileTracingRoot`; el aviso sobre un `pnpm-lock.yaml` fuera del repositorio
+  que aparece en algunas máquinas tiene esa misma causa.

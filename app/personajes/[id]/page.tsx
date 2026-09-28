@@ -29,7 +29,7 @@ export async function generateMetadata({
     const titulos = personaje.peliculas.map((pelicula) => pelicula.titulo);
     const descripcion = titulos.length
       ? `${personaje.nombre} aparece en ${titulos.length} ${
-          titulos.length === 1 ? "pelicula" : "peliculas"
+          titulos.length === 1 ? "película" : "películas"
         } de Star Wars: ${titulos.join(", ")}.`
       : `Ficha de ${personaje.nombre} en el archivo de personajes de Star Wars.`;
 

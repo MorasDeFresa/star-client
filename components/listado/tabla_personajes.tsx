@@ -91,11 +91,11 @@ export default function TablaPersonajes({
 
       {pagina.length === 0 ? (
         <EstadoVacio
-          titulo={enBusqueda ? "Ningun personaje coincide" : "No hay personajes"}
+          titulo={enBusqueda ? "Ningún personaje coincide" : "No hay personajes"}
           detalle={
             enBusqueda
-              ? "Prueba con otro nombre o borra la busqueda para volver a ver el listado completo."
-              : "El API publico no devolvio ningun personaje."
+              ? "Prueba con otro nombre o borra la búsqueda para volver a ver el listado completo."
+              : "El API público no devolvió ningún personaje."
           }
         />
       ) : (
@@ -104,10 +104,10 @@ export default function TablaPersonajes({
             <TableHead>
               <TableRow>
                 <TableCell>Nombre</TableCell>
-                <TableCell>Genero</TableCell>
+                <TableCell>Género</TableCell>
                 <TableCell>Nacimiento</TableCell>
                 <TableCell align="right">
-                  <span style={visualmente_oculto}>Accion</span>
+                  <span style={visualmente_oculto}>Acción</span>
                 </TableCell>
               </TableRow>
             </TableHead>
