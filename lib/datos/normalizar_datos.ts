@@ -22,7 +22,7 @@ type PeliculaApi = {
     planets: ({ id: string; name: string | null } | null)[] | null;
   } | null;
 };
-type PersonajeApi = NonNullable<ConsultarPersonajeQuery["person"]>;
+type PersonajeApi = NonNullable<ConsultarPersonajeQuery["person"]> | null;
 
 const SIN_DATO = "";
 
@@ -72,30 +72,33 @@ export function normalizar_pelicula(pelicula: PeliculaApi): PeliculaDetalle {
 }
 
 export function normalizar_personaje(
-  personaje: PersonajeApi,
+  id: string,
+  nombreApi: string | null | undefined,
+  personaje: PersonajeApi | null,
   peliculas: readonly PeliculaDetalle[],
-  datosCompletos: boolean,
 ): PersonajeDetalle {
+  const genero = texto(personaje?.gender);
+  const nacimiento = texto(personaje?.birthYear);
+  const especie = texto(personaje?.species?.name);
+
   return {
-    id: personaje.id,
-    nombre: texto(personaje.name) ?? SIN_DATO,
-    genero: texto(personaje.gender),
-    anioNacimiento: texto(personaje.birthYear),
-    alturaCm: personaje.height ?? null,
-    masaKg: personaje.mass ?? null,
-    colorOjos: texto(personaje.eyeColor),
-    colorPelo: texto(personaje.hairColor),
-    colorPiel: texto(personaje.skinColor),
-    planetaNatal: personaje.homeworld
-      ? { id: personaje.homeworld.id, nombre: texto(personaje.homeworld.name) ?? SIN_DATO }
-      : null,
-    especie: texto(personaje.species?.name),
-    naves: lista(personaje.starshipConnection?.starships).map((nave) => ({
+    id,
+    nombre: texto(nombreApi) ?? texto(personaje?.name) ?? SIN_DATO,
+    genero,
+    anioNacimiento: nacimiento,
+    alturaCm: personaje?.height ?? null,
+    masaKg: personaje?.mass ?? null,
+    colorOjos: texto(personaje?.eyeColor),
+    colorPelo: texto(personaje?.hairColor),
+    colorPiel: texto(personaje?.skinColor),
+    planetaNatal: null,
+    especie,
+    naves: lista(personaje?.starshipConnection?.starships).map((nave) => ({
       id: nave.id,
       nombre: texto(nave.name) ?? SIN_DATO,
     })),
     peliculas: [...peliculas],
-    datosCompletos,
+    datosCompletos: Boolean(genero || nacimiento || especie),
   };
 }
 
