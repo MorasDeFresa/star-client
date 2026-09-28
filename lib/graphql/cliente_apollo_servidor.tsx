@@ -2,6 +2,7 @@ import { cache } from "react";
 import { HttpLink } from "@apollo/client";
 import { ApolloClient, InMemoryCache, registerApolloClient } from "@apollo/client-integration-nextjs";
 import { URL_GQL as URL_PUBLICA } from "@/lib/graphql/config_graphql";
+import { POLITICAS_CACHE } from "@/lib/graphql/cache_tipos";
 
 const SEGUNDOS_REVALIDACION = 300;
 
@@ -15,7 +16,7 @@ export const { getClient: obtener_cliente_apollo, query: consultar_apollo } = re
           headers: { "Content-Type": "application/json" },
         },
       }),
-      cache: new InMemoryCache(),
+      cache: new InMemoryCache({ typePolicies: POLITICAS_CACHE }),
     }),
 );
 
