@@ -27,27 +27,27 @@ falta ejecutarlo cuando cambia el schema o alguna operación de
 
 ## Scripts
 
-| Script              | Qué hace                                                  |
-| ------------------- | --------------------------------------------------------- |
-| `npm run dev`       | Servidor de desarrollo                                    |
-| `npm run build`     | Build de producción (ejecuta `tsc`, así que también tipa)  |
-| `npm run start`     | Sirve el build de producción                              |
-| `npm run lint`      | ESL plano sobre el proyecto entero                        |
-| `npm run typecheck` | `tsc --noEmit`                                            |
-| `npm run test`      | Suite de Vitest en modo watch-free, una sola ejecución     |
-| `npm run test:watch`| Vitest en watch                                            |
-| `npm run codegen`   | Regenera los tipos de GraphQL                             |
+| Script               | Qué hace                                                  |
+| -------------------- | --------------------------------------------------------- |
+| `npm run dev`        | Servidor de desarrollo                                    |
+| `npm run build`      | Build de producción (ejecuta `tsc`, así que también tipa) |
+| `npm run start`      | Sirve el build de producción                              |
+| `npm run lint`       | ESL plano sobre el proyecto entero                        |
+| `npm run typecheck`  | `tsc --noEmit`                                            |
+| `npm run test`       | Suite de Vitest en modo watch-free, una sola ejecución    |
+| `npm run test:watch` | Vitest en watch                                           |
+| `npm run codegen`    | Regenera los tipos de GraphQL                             |
 
 ## Variables de entorno
 
 Todas tienen valor por defecto, así que la aplicación arranca sin `.env.local`.
 Están documentadas en `.env.example`.
 
-| Variable                       | Para qué sirve                                                        |
-| ------------------------------ | --------------------------------------------------------------------- |
-| `SWAPI_GRAPHQL_URL`            | Endpoint que usa el cliente Apollo del servidor y el generador de tipos |
-| `NEXT_PUBLIC_SWAPI_GRAPHQL_URL`| El mismo endpoint, expuesto al bundle para paginar en el cliente       |
-| `NEXT_PUBLIC_ORIGIN`           | Origen con el que se construye `metadataBase`                         |
+| Variable                        | Para qué sirve                                                          |
+| ------------------------------- | ----------------------------------------------------------------------- |
+| `SWAPI_GRAPHQL_URL`             | Endpoint que usa el cliente Apollo del servidor y el generador de tipos |
+| `NEXT_PUBLIC_SWAPI_GRAPHQL_URL` | El mismo endpoint, expuesto al bundle para paginar en el cliente        |
+| `NEXT_PUBLIC_ORIGIN`            | Origen con el que se construye `metadataBase`                           |
 
 ## Cómo funciona
 
@@ -204,3 +204,47 @@ Dos detalles del build que conviene conocer:
 - Si el despliegue vive en un subdirectorio, hay que fijar `turbopack.root` y
   `outputFileTracingRoot`; el aviso sobre un `pnpm-lock.yaml` fuera del repositorio
   que aparece en algunas máquinas tiene esa misma causa.
+
+## Mejoras Pendientes del Portal
+
+Por falta de tiempo no fue posible cubrir todas las necesidades identificadas durante el desarrollo. A continuación se detallan los puntos pendientes, agrupados por área.
+
+---
+
+### 1. Experiencia de usuario (UX)
+
+Skeletons más fieles a la estructura final
+
+**Situación actual:** los skeletons funcionan correctamente, pero son genéricos.
+
+**Problema:** al no reflejar la estructura real del contenido, pueden generar confusión y transiciones bruscas cuando la información termina de cargar.
+
+**Mejora propuesta:**
+
+- Adaptar cada skeleton a la disposición final de su componente (tamaños, proporciones y ubicación de elementos).
+- Lograr una transición fluida entre el estado de carga y el contenido real.
+
+---
+
+### 2. Interfaz de usuario (UI)
+
+Personalización más detallada
+
+**Situación actual:** el portal utiliza las fuentes y los colores de la franquicia a la que rinde homenaje.
+
+**Problema:** falta una personalización más profunda que le dé mayor presencia e identidad al portal.
+
+**Mejora propuesta:**
+
+- **Iconografía:** incorporar iconos temáticos alineados con la franquicia.
+- **Animaciones:** añadir animaciones y microinteracciones que refuercen la inmersión del usuario.
+
+---
+
+### Resumen
+
+| Área | Pendiente                                 | Impacto esperado                      |
+| ---- | ----------------------------------------- | ------------------------------------- |
+| UX   | Skeletons adaptados a la estructura final | Transiciones suaves y menos confusión |
+| UI   | Iconos temáticos                          | Mayor identidad visual                |
+| UI   | Animaciones                               | Mejor inmersión del usuario           |
