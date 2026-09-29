@@ -4,8 +4,8 @@ Archivo de personajes del universo Star Wars construido con **Next.js 16** (App
 Router), **React 19**, **MUI 9** y **Apollo Client 4**, sobre el GraphQL público
 de [SWAPI](https://github.com/trevorharrington/swapi-graphql).
 
-Listado paginado con scroll infinito, ficha de detalle por personaje y buscador
-con debounce que se refleja en la URL.
+Listado paginado, ficha de detalle por personaje y buscador con debounce que se
+refleja en la URL.
 
 ## Puesta en marcha
 
@@ -56,7 +56,53 @@ Están documentadas en `.env.example`.
 El API bloquea las peticiones que llegan del navegador por CORS, así que la
 consulta inicial se hace en el servidor y se serializa en la caché de Apollo,
 que viaja en el HTML. El cliente de Apollo solo interviene a partir de ahí, para
-el scroll infinito. Un cliente puramente en el navegador no funcionaría.
+traer las páginas siguientes. Un cliente puramente en el navegador no
+funcionaría.
+
+La segunda vista cambia según el tamaño de la pantalla, y con ella cambia cómo se
+recorren los personajes: en escritorio la tabla pagina por números, en móvil las
+tarjetas se encadenan hasta el final.
+
+### Elige tabla o tarjetas según el ancho
+
+`use_es_escritorio` decide con la media query de MUI en `md` (900px). Se resuelve
+con `defaultMatches: true` para que el servidor y la hidratación pinten siempre la
+tabla, y el cambio a tarjetas ocurre después, ya en el cliente. Al revés se
+produciría un desajuste de hidratación, porque el servidor no puede saber el ancho
+de la ventana.
+
+Solo se monta una de las dos vistas. Montar las dos pediría los mismos datos dos
+veces, y cada vista necesita una estrategia de paginación distinta.
+
+### La tabla de escritorio pagina, y SWAPI no pagina por número
+
+`allPeople` acepta `first` y `after`, no `page`. Para leer la página 7 hay que
+conocer el `endCursor` de la 6, y ese solo existe si se han pedido las anteriores.
+`use_paginacion_por_cursor` guarda los cursores a medida que los descubre: al
+saltar de la 3 a la 7 pide las páginas 4, 5 y 6, únicamente por su cursor, y como
+cada respuesta queda en la caché, volver atrás no vuelve a pedir nada. El
+componente de la tabla solo lee el cursor ya conocido, así que nunca muestra una
+página a medio camino.
+
+En una página que falla se enseñan filas vacías, no las de la primera: repetir
+esas bajo un contador que dice «Página 4» sería peor que no mostrar nada. El
+paginador sigue disponible para poderarse.
+
+### Las tarjetas de móvil se encadenan
+
+El scroll infinito va aquí, y no en la tabla, que es el sitio donde un
+`IntersectionObserver` molesta: en escritorio la lista no llega al fondo de la
+ventana, así que el disparador nunca se activaría y el botón «Cargar más» sería la
+única vía, con un comportamiento distinto al del móvil.
+
+Las páginas ya pedidas se apilan en estado de React, con el `endCursor` y el
+`hasNextPage` de cada una. Leerlos siempre de la consulta principal repetiría la
+página 2 indefinidamente y el botón no se apagaría nunca. La caché de Apollo se
+queda con la política por defecto, que separa cada página por sus variables: la
+tabla necesita las páginas aisladas y las tarjetas las acumulan ellas mismas.
+
+El botón sigue ahí aunque haya scroll infinito. Es el camino accesible por teclado
+y el que funciona cuando el observer no llega a dispararse.
 
 ### La búsqueda vive en la URL
 
@@ -102,11 +148,14 @@ schema, pero el resolver lo rechaza y hace fallar la consulta entera.
 
 Las celdas sin dato muestran `—` en lugar de una cadena vacía, para que un lector
 de pantalla no las anuncie como si tuvieran contenido. El nombre de cada fila es
-el encabezado de fila (`th` con `scope="row"`), el contador de resultados va en
-una región `aria-live="polite"` para que se anuncie el cambio de «Mostrando 10» a
-«Mostrando 20», y el scroll infinito tiene además un botón «Cargar más»: quien
-navegue con teclado o con lectores que no disparan `IntersectionObserver` no se
-queda sin forma de avanzar.
+el encabezado de fila (`th` con `scope="row"`), y en las tarjetas el enlace se
+estira sobre toda la superficie, de modo que el objetivo táctil es la tarjeta
+entera y no el texto. El contador de resultados va en una región
+`aria-live="polite"` para que se anuncie el cambio de «Mostrando 10» a
+«Mostrando 20» al encadenar páginas. El paginador de escritorio lleva etiquetas
+propias en lugar de las de MUI, que salen en inglés, y el «Cargar más personajes»
+se deshabilita y muestra `CircularProgress` mientras la página siguiente está en
+vuelo.
 
 ## Pruebas
 
@@ -114,16 +163,27 @@ queda sin forma de avanzar.
 npm run test
 ```
 
-58 pruebas con Vitest y Testing Library sobre `jsdom`:
+86 pruebas con Vitest y Testing Library sobre `jsdom`:
 
 - **Formateadores** — que `null`, `"n/a"` y `"unknown"` acaben en el mismo sitio, y
   que un `0` se trate como dato y no como ausencia.
 - **Normalizado** — el contrato entre los tipos generados y el modelo que consume
   la interfaz, incluidos los huecos dentro de un array.
-- **Hooks** — el debounce con relojes falsos (incluida una racha de pulsaciones) y
-  las tres puertas de la URL: la aplicación, la escritura a mano y el `popstate`.
+- **Hooks** — el debounce con relojes falsos (incluida una racha de pulsaciones),
+  las tres puertas de la URL (la aplicación, la escritura a mano y el `popstate`)
+  y la paginación por cursor: que la segunda página venga del servidor, que un
+  salto lejano pida solo las intermedias, que volver atrás no repita peticiones y
+  que un fallo se pueda reintentar.
 - **Componentes** — el buscador escribiendo en la URL tras el retardo, y la fila sin
   HTML inválido ni pérdida del rol de enlace.
+- **Las dos vistas** — que en escritorio salga la tabla con paginador y sin carga
+  infinita, y que en móvil salgan las tarjetas encadenadas, con el botón y el
+  observer añadiendo páginas debajo sin quitar las anteriores.
+
+Los tests de paginación cuentan las peticiones que salen por el enlace de Apollo
+en vez de fiarse del orden de los mocks: es lo que demuestra que saltar a la
+última página no pide de más, y que el `IntersectionObserver` no dispara una
+petición por su cuenta.
 
 No se prueban los Server Components asíncronos con Vitest; la guía de Next lo
 desaconseja. Esos caminos se comprueban levantando el servidor.

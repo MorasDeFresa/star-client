@@ -90,6 +90,21 @@ export function normalizar_pagina_personajes(
   };
 }
 
+/** La misma conversion para las paginas que llegan sueltas: el listado por
+    scroll infinito las anade de una en una y las cruza con el indice igual que
+    la pagina inicial. */
+export function mapear_personajes(
+  personas: readonly ({ id: string; name: string | null } | null)[] | null | undefined,
+): PersonajeResumen[] {
+  return lista(personas).map((persona) => ({
+    id: persona.id,
+    nombre: texto(persona.name) ?? SIN_DATO,
+    apariciones: null,
+    primeraAparicion: null,
+    ultimaAparicion: null,
+  }));
+}
+
 /** El API no devuelve las peliculas en la ficha de cada personaje, asi que el
     indice se invierte desde las peliculas: cuantas veces aparece cada id y las
     fechas de su primera y su ultima aparicion. */

@@ -2,7 +2,6 @@ import { cache } from "react";
 import { HttpLink } from "@apollo/client";
 import { ApolloClient, InMemoryCache, registerApolloClient } from "@apollo/client-integration-nextjs";
 import { URL_GQL as URL_PUBLICA } from "@/lib/graphql/config_graphql";
-import { POLITICAS_CACHE } from "@/lib/graphql/cache_tipos";
 
 const SEGUNDOS_REVALIDACION = 300;
 
@@ -16,7 +15,10 @@ export const { getClient: obtener_cliente_apollo, query: consultar_apollo } = re
           headers: { "Content-Type": "application/json" },
         },
       }),
-      cache: new InMemoryCache({ typePolicies: POLITICAS_CACHE }),
+      // La clave por defecto incluye las variables, con lo que la primera pagina
+      // que se pide aqui es la misma entrada que lee el cliente al hidratar y no
+      // vuelve a salir por la red.
+      cache: new InMemoryCache(),
     }),
 );
 

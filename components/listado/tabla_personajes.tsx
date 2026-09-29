@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { NetworkStatus } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
@@ -15,13 +16,15 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
 import { ConsultarPersonajesDocument } from "@/lib/graphql/generados/graphql";
-import { use_observador_scroll_infinito } from "@/hooks/use_observador_scroll_infinito";
 import { TAMANO_PAGINA } from "@/lib/datos/tamano_pagina";
-import { con_apariciones } from "@/lib/datos/normalizar_datos";
+import { con_apariciones, mapear_personajes } from "@/lib/datos/normalizar_datos";
+import { use_paginacion_por_cursor } from "@/hooks/use_paginacion_por_cursor";
 import type { IndiceApariciones, PaginaPersonajes, PersonajeResumen } from "@/lib/datos/tipos_vista";
-import BotonCargarMas from "./boton_cargar_mas";
 import EstadoVacio from "@/components/ui/estado_vacio";
 import FilaPersonaje from "./fila_personaje";
+import Paginacion from "./paginacion";
+
+const COLUMNAS = 5;
 
 const visualmente_oculto = {
   position: "absolute",
@@ -35,6 +38,9 @@ const visualmente_oculto = {
   border: 0,
 } as const;
 
+/** El listado en tabla, para pantallas anchas. En vez de encadenar páginas avanza
+    de una en una: cada página es una consulta aparte, así que el servidor solo
+    manda las diez filas que se ven. */
 export default function TablaPersonajes({
   paginaInicial,
   resultadosBusqueda,
@@ -44,39 +50,53 @@ export default function TablaPersonajes({
   resultadosBusqueda?: PersonajeResumen[] | undefined;
   indiceApariciones: IndiceApariciones;
 }) {
-  const { data, error, fetchMore, networkStatus } = useQuery(ConsultarPersonajesDocument, {
-    variables: { first: TAMANO_PAGINA, after: null },
+  const enBusqueda = resultadosBusqueda !== undefined;
+  const totalServidor = paginaInicial.total;
+
+  const { pagina, totalPaginas, cursor, preparando, error: errorPaginacion, ir_a, reintentar } =
+    use_paginacion_por_cursor(paginaInicial.cursorSiguiente, totalServidor);
+
+  const { data, error, networkStatus, refetch } = useQuery(ConsultarPersonajesDocument, {
+    variables: { first: TAMANO_PAGINA, after: cursor ?? null },
+    // Sin el cursor de la página no hay nada que leer todavía: se espera a que el
+    // hook lo descubra en vez de volver a pedir la primera página.
+    skip: cursor === undefined,
+    notifyOnNetworkStatusChange: true,
   });
 
   const conexion = data?.allPeople;
-  const enBusqueda = resultadosBusqueda !== undefined;
-  const cargandoMas = networkStatus === NetworkStatus.fetchMore;
+  const total = conexion?.totalCount ?? totalServidor;
 
-  // Las filas del servidor y las de la busqueda ya vienen cruzadas con el
-  // indice; las que llegan del scroll infinito se cruzan aqui con el mismo.
-  const pagina: PersonajeResumen[] = enBusqueda
+  // Hasta que la consulta del cliente responde se pintan las filas que ya venían
+  // del servidor, para que la tabla no se vacíe al hidratar. En las páginas
+  // siguientes no: si fallan, la tabla se queda vacía en vez de mostrar las
+  // filas de la primera bajo un contador que dice otra cosa.
+  const filasServidor = pagina === 1 ? paginaInicial.personajes : [];
+  const personajes: PersonajeResumen[] = enBusqueda
     ? resultadosBusqueda
-    : con_apariciones(mapear(conexion?.people) ?? paginaInicial.personajes, indiceApariciones);
+    : con_apariciones(
+        conexion ? mapear_personajes(conexion.people) : filasServidor,
+        indiceApariciones,
+      );
 
-  const total = conexion?.totalCount ?? paginaInicial.total;
-  const hayMas = !enBusqueda && (conexion?.pageInfo?.hasNextPage ?? paginaInicial.hayMas);
+  const cargando = !enBusqueda && networkStatus === NetworkStatus.loading;
+  const fallo = error ?? errorPaginacion;
 
-  const cargar_mas = useCallback(async () => {
-    if (!hayMas || cargandoMas) return;
-    const despues = conexion?.pageInfo?.endCursor ?? paginaInicial.cursorSiguiente;
-    if (!despues) return;
-    await fetchMore({ variables: { first: TAMANO_PAGINA, after: despues } });
-  }, [hayMas, cargandoMas, conexion?.pageInfo?.endCursor, paginaInicial.cursorSiguiente, fetchMore]);
-
-  const referencia = use_observador_scroll_infinito<HTMLDivElement>(() => {
-    void cargar_mas();
-  });
+  // Al cambiar de página se vuelve al principio del listado: si no, el usuario
+  // aterriza a mitad de la tabla y tiene que subir para ver la cabecera. El
+  // primer render no cuenta, que ahí ya está donde tiene que estar.
+  const paginaPrevia = useRef(pagina);
+  useEffect(() => {
+    if (paginaPrevia.current === pagina) return;
+    paginaPrevia.current = pagina;
+    document.getElementById("listado")?.scrollIntoView({ block: "start" });
+  }, [pagina]);
 
   return (
     <Stack spacing={2}>
-      {/* `aria-live` para que el cambio de "Mostrando 10" a "Mostrando 20" al
-          hacer scroll se anuncie. Con la busqueda es lo que comunica el
-          resultado. `tabular-nums` evita que el ancho de la fila se mueva. */}
+      {/* `aria-live` para que el cambio de "Página 1 de 9" a "Página 2 de 9" se
+          anuncie. Con la búsqueda es lo que comunica el resultado.
+          `tabular-nums` evita que el ancho de la fila se mueva. */}
       <Typography
         variant="body2"
         color="text.secondary"
@@ -84,25 +104,39 @@ export default function TablaPersonajes({
         sx={{ fontVariantNumeric: "tabular-nums" }}
       >
         {enBusqueda
-          ? `${pagina.length} de ${total} personajes coinciden con la busqueda`
-          : `Mostrando ${pagina.length} de ${total} personajes`}
+          ? `${personajes.length} de ${total} personajes coinciden con la busqueda`
+          : `Página ${pagina} de ${totalPaginas} · ${total} personajes`}
       </Typography>
 
-      {error && (
-        <Alert severity="error" variant="outlined">
-          No se pudo cargar la siguiente pagina de personajes. {error.message}
+      {fallo && (
+        <Alert
+          severity="error"
+          variant="outlined"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => (errorPaginacion ? reintentar() : void refetch())}
+            >
+              Reintentar
+            </Button>
+          }
+        >
+          No se pudo cargar esa página de personajes. {fallo.message}
         </Alert>
       )}
 
-      {pagina.length === 0 ? (
-        <EstadoVacio
-          titulo={enBusqueda ? "Ningún personaje coincide" : "No hay personajes"}
-          detalle={
-            enBusqueda
-              ? "Prueba con otro nombre o borra la búsqueda para volver a ver el listado completo."
-              : "El API público no devolvió ningún personaje."
-          }
-        />
+      {personajes.length === 0 ? (
+        fallo ? null : (
+          <EstadoVacio
+            titulo={enBusqueda ? "Ningún personaje coincide" : "No hay personajes"}
+            detalle={
+              enBusqueda
+                ? "Prueba con otro nombre o borra la búsqueda para volver a ver el listado completo."
+                : "El API público no devolvió ningún personaje."
+            }
+          />
+        )
       ) : (
         <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
           <Table aria-label="Listado de personajes de Star Wars">
@@ -118,15 +152,15 @@ export default function TablaPersonajes({
               </TableRow>
             </TableHead>
             <TableBody>
-              {pagina.map((personaje) => (
+              {personajes.map((personaje) => (
                 <FilaPersonaje key={personaje.id} personaje={personaje} />
               ))}
               {/* Filas de carga al final: sostienen el ancho de columna sin
                   desplazar las filas ya visibles. */}
-              {cargandoMas &&
+              {cargando &&
                 Array.from({ length: 3 }, (_, indice) => (
                   <TableRow key={`cargando-${indice}`}>
-                    <TableCell colSpan={5}>
+                    <TableCell colSpan={COLUMNAS}>
                       <Skeleton height={28} />
                     </TableCell>
                   </TableRow>
@@ -136,29 +170,17 @@ export default function TablaPersonajes({
         </TableContainer>
       )}
 
-      {!enBusqueda && hayMas && (
-        <>
-          {/* Ancla del observer: no es interactiva, el boton de abajo es el
-              camino accesible. */}
-          <div ref={referencia} aria-hidden style={{ height: 1 }} />
-          <BotonCargarMas onCargar={() => void cargar_mas()} cargando={cargandoMas} />
-        </>
+      {!enBusqueda && (
+        <Paginacion
+          pagina={pagina}
+          totalPaginas={totalPaginas}
+          total={total}
+          from={(pagina - 1) * TAMANO_PAGINA + 1}
+          to={(pagina - 1) * TAMANO_PAGINA + personajes.length}
+          disabled={preparando}
+          onCambio={ir_a}
+        />
       )}
     </Stack>
   );
-}
-
-function mapear(
-  personas: readonly ({ id: string; name: string | null } | null)[] | null | undefined,
-): PersonajeResumen[] | undefined {
-  if (!personas) return undefined;
-  return personas
-    .filter((persona): persona is NonNullable<typeof persona> => persona != null)
-    .map((personaje) => ({
-      id: personaje.id,
-      nombre: personaje.name ?? "",
-      apariciones: null,
-      primeraAparicion: null,
-      ultimaAparicion: null,
-    }));
 }
