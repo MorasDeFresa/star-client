@@ -1,9 +1,12 @@
 import type {
   ConsultarIndiceNombresQuery,
+  ConsultarPeliculasQuery,
   ConsultarPersonajeQuery,
   ConsultarPersonajesQuery,
 } from "@/lib/graphql/generados/graphql";
 import type {
+  EstadisticasApariciones,
+  IndiceApariciones,
   IndiceNombres,
   PaginaPersonajes,
   PeliculaDetalle,
@@ -36,6 +39,35 @@ function lista<T>(items: readonly (T | null | undefined)[] | null | undefined): 
   return items?.filter((item): item is T => item != null) ?? [];
 }
 
+/** Las fechas del API son ISO (`AAAA-MM-DD`); si alguna llega malformada se
+    comparan como texto para no perder la aparicion mas antigua. */
+function comparar_fechas(primera: string, segunda: string): number {
+  const a = Date.parse(primera);
+  const b = Date.parse(segunda);
+  if (Number.isNaN(a) || Number.isNaN(b)) return primera.localeCompare(segunda);
+  return a - b;
+}
+
+function antes_que(primera: string, segunda: string): boolean {
+  return comparar_fechas(primera, segunda) < 0;
+}
+
+function despues_que(primera: string, segunda: string): boolean {
+  return comparar_fechas(primera, segunda) > 0;
+}
+
+/** Se queda con la de la pelicula si es mejor que la que ya tenia, y no
+    inventa ninguna cuando el API no dio fecha. */
+function extremo(
+  actual: string | null,
+  nueva: string | null,
+  mejor: (primera: string, segunda: string) => boolean,
+): string | null {
+  if (nueva == null) return actual;
+  if (actual == null) return nueva;
+  return mejor(nueva, actual) ? nueva : actual;
+}
+
 export function normalizar_pagina_personajes(
   datos: ConsultarPersonajesQuery["allPeople"] | undefined,
   fallbackTotal = 0,
@@ -45,8 +77,9 @@ export function normalizar_pagina_personajes(
   const personajes: PersonajeResumen[] = personas.map((persona) => ({
     id: persona.id,
     nombre: texto(persona.name) ?? SIN_DATO,
-    genero: texto(persona.gender),
-    anioNacimiento: texto(persona.birthYear),
+    apariciones: null,
+    primeraAparicion: null,
+    ultimaAparicion: null,
   }));
 
   return {
@@ -55,6 +88,52 @@ export function normalizar_pagina_personajes(
     cursorSiguiente: datos?.pageInfo?.endCursor ?? null,
     hayMas: datos?.pageInfo?.hasNextPage ?? false,
   };
+}
+
+/** El API no devuelve las peliculas en la ficha de cada personaje, asi que el
+    indice se invierte desde las peliculas: cuantas veces aparece cada id y las
+    fechas de su primera y su ultima aparicion. */
+export function normalizar_indice_apariciones(
+  datos: ConsultarPeliculasQuery["allFilms"] | undefined,
+): IndiceApariciones {
+  const indice = new Map<string, EstadisticasApariciones>();
+
+  for (const pelicula of lista(datos?.films)) {
+    const fecha = texto(pelicula.releaseDate);
+
+    for (const personaje of lista(pelicula.characterConnection?.characters)) {
+      const previas = indice.get(personaje.id);
+
+      if (!previas) {
+        indice.set(personaje.id, {
+          apariciones: 1,
+          primeraAparicion: fecha,
+          ultimaAparicion: fecha,
+        });
+        continue;
+      }
+
+      indice.set(personaje.id, {
+        apariciones: previas.apariciones + 1,
+        primeraAparicion: extremo(previas.primeraAparicion, fecha, antes_que),
+        ultimaAparicion: extremo(previas.ultimaAparicion, fecha, despues_que),
+      });
+    }
+  }
+
+  return indice;
+}
+
+/** Cruza el indice con los personajes ya normalizados. Los que no aparecen en
+    ninguna pelicula conservan sus valores vacios. */
+export function con_apariciones(
+  personajes: readonly PersonajeResumen[],
+  indice: IndiceApariciones,
+): PersonajeResumen[] {
+  return personajes.map((personaje) => {
+    const estadisticas = indice.get(personaje.id);
+    return estadisticas ? { ...personaje, ...estadisticas } : personaje;
+  });
 }
 
 export function normalizar_pelicula(pelicula: PeliculaApi): PeliculaDetalle {

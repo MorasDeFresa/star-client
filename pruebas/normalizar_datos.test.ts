@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
+import type { ConsultarPeliculasQuery } from "@/lib/graphql/generados/graphql";
+import type { PaginaPersonajes } from "@/lib/datos/tipos_vista";
 import {
+  con_apariciones,
+  normalizar_indice_apariciones,
   normalizar_indice_nombres,
   normalizar_pagina_personajes,
   normalizar_pelicula,
@@ -12,8 +16,8 @@ describe("normalizar_pagina_personajes", () => {
       totalCount: 82,
       pageInfo: { hasNextPage: true, endCursor: "Y3Vyc29yOjE=" },
       people: [
-        { id: "cGVvcGxlOjE=", name: "Luke Skywalker", gender: null, birthYear: null },
-        { id: "cGVvcGxlOjI=", name: "C-3PO", gender: null, birthYear: null },
+        { id: "cGVvcGxlOjE=", name: "Luke Skywalker" },
+        { id: "cGVvcGxlOjI=", name: "C-3PO" },
       ],
     });
 
@@ -27,10 +31,7 @@ describe("normalizar_pagina_personajes", () => {
     const pagina = normalizar_pagina_personajes({
       totalCount: 2,
       pageInfo: { hasNextPage: false, endCursor: null },
-      people: [
-        { id: "cGVvcGxlOjE=", name: "Luke Skywalker", gender: null, birthYear: null },
-        null,
-      ],
+      people: [{ id: "cGVvcGxlOjE=", name: "Luke Skywalker" }, null],
     });
 
     expect(pagina.personajes).toHaveLength(1);
@@ -44,15 +45,20 @@ describe("normalizar_pagina_personajes", () => {
     expect(pagina.hayMas).toBe(false);
   });
 
-  test("convierte n/a y unknown en null, no en texto", () => {
+  test("deja las apariciones sin rellenar: las cruza despues el indice", () => {
     const pagina = normalizar_pagina_personajes({
       totalCount: 1,
       pageInfo: { hasNextPage: false, endCursor: null },
-      people: [{ id: "x", name: "Desconocido", gender: "n/a", birthYear: "unknown" }],
+      people: [{ id: "cGVvcGxlOjE=", name: "Luke Skywalker" }],
     });
 
-    expect(pagina.personajes[0].genero).toBeNull();
-    expect(pagina.personajes[0].anioNacimiento).toBeNull();
+    expect(pagina.personajes[0]).toEqual({
+      id: "cGVvcGxlOjE=",
+      nombre: "Luke Skywalker",
+      apariciones: null,
+      primeraAparicion: null,
+      ultimaAparicion: null,
+    });
   });
 });
 
@@ -165,6 +171,109 @@ describe("normalizar_personaje", () => {
 
     expect(personaje.peliculas).not.toBe(compartidas);
     expect(personaje.peliculas).toEqual(compartidas);
+  });
+});
+
+describe("normalizar_indice_apariciones", () => {
+  type PeliculaApi = NonNullable<
+    NonNullable<NonNullable<ConsultarPeliculasQuery["allFilms"]>["films"]>[number]
+  >;
+
+  function pelicula(
+    id: string,
+    releaseDate: string | null,
+    personajes: string[],
+  ): PeliculaApi {
+    return {
+      id,
+      title: null,
+      episodeID: null,
+      director: null,
+      releaseDate,
+      planetConnection: null,
+      characterConnection: {
+        totalCount: personajes.length,
+        characters: personajes.map((id) => ({ id, name: null })),
+      },
+    };
+  }
+
+  test("cuenta las peliculas de cada personaje y ordena sus fechas", () => {
+    const indice = normalizar_indice_apariciones({
+      totalCount: 2,
+      // Vienen en orden de episodio, no de fecha: la primera es la mas antigua.
+      films: [
+        pelicula("ZmlsbXM6Mg==", "1980-05-17", ["cGVvcGxlOjE=", "ZGFydGg6MQ=="]),
+        pelicula("ZmlsbXM6MQ==", "1977-05-25", ["cGVvcGxlOjE="]),
+      ],
+    });
+
+    expect(indice.get("cGVvcGxlOjE=")).toEqual({
+      apariciones: 2,
+      primeraAparicion: "1977-05-25",
+      ultimaAparicion: "1980-05-17",
+    });
+    expect(indice.get("ZGFydGg6MQ==")).toEqual({
+      apariciones: 1,
+      primeraAparicion: "1980-05-17",
+      ultimaAparicion: "1980-05-17",
+    });
+  });
+
+  test("cuenta la pelicula sin fecha pero no inventa ninguna", () => {
+    const indice = normalizar_indice_apariciones({
+      totalCount: 1,
+      films: [pelicula("ZmlsbXM6MQ==", "unknown", ["cGVvcGxlOjE="])],
+    });
+
+    expect(indice.get("cGVvcGxlOjE=")).toEqual({
+      apariciones: 1,
+      primeraAparicion: null,
+      ultimaAparicion: null,
+    });
+  });
+
+  test("descarta las peliculas nulas y las que no traen reparto", () => {
+    expect(normalizar_indice_apariciones(undefined).size).toBe(0);
+    expect(normalizar_indice_apariciones({ totalCount: 2, films: [null] }).size).toBe(0);
+    expect(
+      normalizar_indice_apariciones({
+        totalCount: 1,
+        films: [{ ...pelicula("ZmlsbXM6MQ==", "1977-05-25", []), characterConnection: null }],
+      }).size,
+    ).toBe(0);
+  });
+});
+
+describe("con_apariciones", () => {
+  const pagina: PaginaPersonajes = {
+    personajes: [
+      { id: "cGVvcGxlOjE=", nombre: "Luke Skywalker", apariciones: null, primeraAparicion: null, ultimaAparicion: null },
+      { id: "ZGVuZXJhdG8=", nombre: "Desconocido", apariciones: null, primeraAparicion: null, ultimaAparicion: null },
+    ],
+    total: 2,
+    cursorSiguiente: null,
+    hayMas: false,
+  };
+
+  test("rellena las apariciones de quien esta en el indice", () => {
+    const indice = new Map([["cGVvcGxlOjE=", { apariciones: 4, primeraAparicion: "1977-05-25", ultimaAparicion: "1983-05-25" }]]);
+
+    const personajes = con_apariciones(pagina.personajes, indice);
+
+    expect(personajes[0]).toEqual({
+      id: "cGVvcGxlOjE=",
+      nombre: "Luke Skywalker",
+      apariciones: 4,
+      primeraAparicion: "1977-05-25",
+      ultimaAparicion: "1983-05-25",
+    });
+  });
+
+  test("deja sin tocar a quien no aparece en ninguna pelicula", () => {
+    const personajes = con_apariciones(pagina.personajes, new Map());
+
+    expect(personajes).toEqual(pagina.personajes);
   });
 });
 

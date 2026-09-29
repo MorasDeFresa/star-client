@@ -8,8 +8,6 @@ query ConsultarPersonajes($first: Int!, $after: String) {
     people {
       id
       name
-      gender
-      birthYear
     }
   }
 }

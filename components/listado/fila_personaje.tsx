@@ -6,7 +6,7 @@ import Link from "@mui/material/Link";
 import TableCell from "@mui/material/TableCell";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
-import { formatear_genero, formatear_nacimiento, SIN_DATO } from "@/lib/utilidades/formatear_medidas";
+import { formatear_fecha_pelicula, SIN_DATO } from "@/lib/utilidades/formatear_medidas";
 import type { PersonajeResumen } from "@/lib/datos/tipos_vista";
 
 export default function FilaPersonaje({ personaje }: { personaje: PersonajeResumen }) {
@@ -32,14 +32,23 @@ export default function FilaPersonaje({ personaje }: { personaje: PersonajeResum
           </Link>
         </Typography>
       </TableCell>
-      <TableCell>
-        <Typography variant="body2" color="text.secondary">
-          {personaje.genero ? formatear_genero(personaje.genero) : SIN_DATO}
+      <TableCell align="right">
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ fontVariantNumeric: "tabular-nums" }}
+        >
+          {personaje.apariciones ?? SIN_DATO}
         </Typography>
       </TableCell>
       <TableCell>
         <Typography variant="body2" color="text.secondary">
-          {personaje.anioNacimiento ? formatear_nacimiento(personaje.anioNacimiento) : SIN_DATO}
+          {formatear_fecha_pelicula(personaje.primeraAparicion) ?? SIN_DATO}
+        </Typography>
+      </TableCell>
+      <TableCell>
+        <Typography variant="body2" color="text.secondary">
+          {formatear_fecha_pelicula(personaje.ultimaAparicion) ?? SIN_DATO}
         </Typography>
       </TableCell>
       <TableCell align="right">

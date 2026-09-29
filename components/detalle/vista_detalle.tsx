@@ -14,10 +14,17 @@ import {
 } from "@/lib/utilidades/formatear_medidas";
 import type { PersonajeDetalle } from "@/lib/datos/tipos_vista";
 
-export default function VistaDetalle({ personaje }: { personaje: PersonajeDetalle }) {
+export default function VistaDetalle({
+  personaje,
+}: {
+  personaje: PersonajeDetalle;
+}) {
   const campos = [
     { etiqueta: "Género", valor: formatear_genero(personaje.genero) },
-    { etiqueta: "Nacimiento", valor: formatear_nacimiento(personaje.anioNacimiento) },
+    {
+      etiqueta: "Nacimiento",
+      valor: formatear_nacimiento(personaje.anioNacimiento),
+    },
     { etiqueta: "Altura", valor: formatear_altura(personaje.alturaCm) },
     { etiqueta: "Masa", valor: formatear_masa(personaje.masaKg) },
     { etiqueta: "Color de ojos", valor: personaje.colorOjos ?? SIN_DATO },
@@ -43,27 +50,40 @@ export default function VistaDetalle({ personaje }: { personaje: PersonajeDetall
           </Typography>
         ) : (
           <Typography variant="body1" color="text.secondary">
-            {personaje.peliculas.length}{" "}
-            {personaje.peliculas.length === 1 ? "película" : "películas"} de la saga original y las
-            tres prequelas.
+            Ha aparecido en {personaje.peliculas.length}{" "}
+            {personaje.peliculas.length === 1 ? "película" : "películas"} de la
+            saga.
           </Typography>
         )}
       </Stack>
 
       {!personaje.datosCompletos && (
         <Alert severity="info" variant="outlined">
-          El API público devuelve los personajes sin sus campos descriptivos. Esta ficha se ha
-          reconstruido a partir de las películas del personaje, así que la altura, el color de ojos
-          o la especie no son fiables.
+          El API público devuelve los personajes sin sus campos descriptivos.
+          Esta ficha se ha reconstruido a partir de las películas del personaje,
+          así que la altura, el color de ojos o la especie no son fiables.
         </Alert>
       )}
 
       {/* `dl` describe terminos y sus valores, que es exactamente la relacion
           entre la etiqueta de un dato de personaje y su valor. */}
-      <Paper component="dl" variant="outlined" sx={{ p: 3, borderRadius: 2, m: 0 }}>
-        <Stack direction="row" spacing={4} useFlexGap sx={{ flexWrap: "wrap", rowGap: 3 }}>
+      <Paper
+        component="dl"
+        variant="outlined"
+        sx={{ p: 3, borderRadius: 2, m: 0 }}
+      >
+        <Stack
+          direction="row"
+          spacing={4}
+          useFlexGap
+          sx={{ flexWrap: "wrap", rowGap: 3 }}
+        >
           {campos.map((campo) => (
-            <BoxDato key={campo.etiqueta} etiqueta={campo.etiqueta} valor={campo.valor} />
+            <BoxDato
+              key={campo.etiqueta}
+              etiqueta={campo.etiqueta}
+              valor={campo.valor}
+            />
           ))}
         </Stack>
       </Paper>
@@ -80,7 +100,11 @@ export default function VistaDetalle({ personaje }: { personaje: PersonajeDetall
           </Typography>
         ) : (
           personaje.peliculas.map((pelicula) => (
-            <Paper key={pelicula.id} variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
+            <Paper
+              key={pelicula.id}
+              variant="outlined"
+              sx={{ p: 3, borderRadius: 2 }}
+            >
               <TarjetaPelicula pelicula={pelicula} />
             </Paper>
           ))

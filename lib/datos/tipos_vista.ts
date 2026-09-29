@@ -1,8 +1,17 @@
+export type EstadisticasApariciones = {
+  apariciones: number;
+  primeraAparicion: string | null;
+  ultimaAparicion: string | null;
+};
+
+export type IndiceApariciones = ReadonlyMap<string, EstadisticasApariciones>;
+
 export type PersonajeResumen = {
   id: string;
   nombre: string;
-  genero: string | null;
-  anioNacimiento: string | null;
+  apariciones: number | null;
+  primeraAparicion: string | null;
+  ultimaAparicion: string | null;
 };
 
 export type PlanetaResumen = {

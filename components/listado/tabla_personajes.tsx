@@ -17,7 +17,8 @@ import Typography from "@mui/material/Typography";
 import { ConsultarPersonajesDocument } from "@/lib/graphql/generados/graphql";
 import { use_observador_scroll_infinito } from "@/hooks/use_observador_scroll_infinito";
 import { TAMANO_PAGINA } from "@/lib/datos/tamano_pagina";
-import type { PaginaPersonajes, PersonajeResumen } from "@/lib/datos/tipos_vista";
+import { con_apariciones } from "@/lib/datos/normalizar_datos";
+import type { IndiceApariciones, PaginaPersonajes, PersonajeResumen } from "@/lib/datos/tipos_vista";
 import BotonCargarMas from "./boton_cargar_mas";
 import EstadoVacio from "@/components/ui/estado_vacio";
 import FilaPersonaje from "./fila_personaje";
@@ -37,9 +38,11 @@ const visualmente_oculto = {
 export default function TablaPersonajes({
   paginaInicial,
   resultadosBusqueda,
+  indiceApariciones,
 }: {
   paginaInicial: PaginaPersonajes;
   resultadosBusqueda?: PersonajeResumen[] | undefined;
+  indiceApariciones: IndiceApariciones;
 }) {
   const { data, error, fetchMore, networkStatus } = useQuery(ConsultarPersonajesDocument, {
     variables: { first: TAMANO_PAGINA, after: null },
@@ -49,9 +52,11 @@ export default function TablaPersonajes({
   const enBusqueda = resultadosBusqueda !== undefined;
   const cargandoMas = networkStatus === NetworkStatus.fetchMore;
 
+  // Las filas del servidor y las de la busqueda ya vienen cruzadas con el
+  // indice; las que llegan del scroll infinito se cruzan aqui con el mismo.
   const pagina: PersonajeResumen[] = enBusqueda
     ? resultadosBusqueda
-    : mapear(conexion?.people) ?? paginaInicial.personajes;
+    : con_apariciones(mapear(conexion?.people) ?? paginaInicial.personajes, indiceApariciones);
 
   const total = conexion?.totalCount ?? paginaInicial.total;
   const hayMas = !enBusqueda && (conexion?.pageInfo?.hasNextPage ?? paginaInicial.hayMas);
@@ -104,8 +109,9 @@ export default function TablaPersonajes({
             <TableHead>
               <TableRow>
                 <TableCell>Nombre</TableCell>
-                <TableCell>Género</TableCell>
-                <TableCell>Nacimiento</TableCell>
+                <TableCell align="right">Apariciones</TableCell>
+                <TableCell>Primera aparición</TableCell>
+                <TableCell>Última aparición</TableCell>
                 <TableCell align="right">
                   <span style={visualmente_oculto}>Acción</span>
                 </TableCell>
@@ -120,7 +126,7 @@ export default function TablaPersonajes({
               {cargandoMas &&
                 Array.from({ length: 3 }, (_, indice) => (
                   <TableRow key={`cargando-${indice}`}>
-                    <TableCell colSpan={4}>
+                    <TableCell colSpan={5}>
                       <Skeleton height={28} />
                     </TableCell>
                   </TableRow>
@@ -143,7 +149,7 @@ export default function TablaPersonajes({
 }
 
 function mapear(
-  personas: readonly ({ id: string; name: string | null; gender: string | null; birthYear: string | null } | null)[] | null | undefined,
+  personas: readonly ({ id: string; name: string | null } | null)[] | null | undefined,
 ): PersonajeResumen[] | undefined {
   if (!personas) return undefined;
   return personas
@@ -151,7 +157,8 @@ function mapear(
     .map((personaje) => ({
       id: personaje.id,
       nombre: personaje.name ?? "",
-      genero: personaje.gender,
-      anioNacimiento: personaje.birthYear,
+      apariciones: null,
+      primeraAparicion: null,
+      ultimaAparicion: null,
     }));
 }

@@ -1,6 +1,7 @@
 import { deduplicar, consultar_apollo } from "@/lib/graphql/cliente_apollo_servidor";
 import { ConsultarPersonajesDocument } from "@/lib/graphql/generados/graphql";
-import { normalizar_pagina_personajes } from "./normalizar_datos";
+import { obtener_indice_apariciones } from "./obtener_indice_apariciones";
+import { con_apariciones, normalizar_pagina_personajes } from "./normalizar_datos";
 import { TAMANO_PAGINA } from "./tamano_pagina";
 import type { PaginaPersonajes } from "./tipos_vista";
 
@@ -8,11 +9,16 @@ export const obtener_personajes = deduplicar(
   async (opciones: { after?: string | null; first?: number } = {}): Promise<PaginaPersonajes> => {
     const first = opciones.first ?? TAMANO_PAGINA;
 
-    const { data } = await consultar_apollo({
-      query: ConsultarPersonajesDocument,
-      variables: { first, after: opciones.after ?? null },
-    });
+    const [{ data }, indiceApariciones] = await Promise.all([
+      consultar_apollo({
+        query: ConsultarPersonajesDocument,
+        variables: { first, after: opciones.after ?? null },
+      }),
+      obtener_indice_apariciones(),
+    ]);
 
-    return normalizar_pagina_personajes(data?.allPeople, 0);
+    const pagina = normalizar_pagina_personajes(data?.allPeople, 0);
+
+    return { ...pagina, personajes: con_apariciones(pagina.personajes, indiceApariciones) };
   },
 );

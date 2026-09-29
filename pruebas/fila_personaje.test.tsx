@@ -8,8 +8,9 @@ import type { PersonajeResumen } from "@/lib/datos/tipos_vista";
 const luke: PersonajeResumen = {
   id: "cGVvcGxlOjE=",
   nombre: "Luke Skywalker",
-  genero: null,
-  anioNacimiento: null,
+  apariciones: 4,
+  primeraAparicion: "1977-05-25",
+  ultimaAparicion: "1983-05-25",
 };
 
 function pintarFila(personaje: PersonajeResumen = luke) {
@@ -22,6 +23,11 @@ function pintarFila(personaje: PersonajeResumen = luke) {
   );
 }
 
+/** La cabecera es la celda `th`; estas son las de datos, en orden de columna. */
+function celdas() {
+  return screen.getAllByRole("cell").map((celda) => celda.textContent);
+}
+
 describe("FilaPersonaje", () => {
   test("la fila es una fila de tabla, no un enlace disfrazado", () => {
     pintarFila();
@@ -29,6 +35,7 @@ describe("FilaPersonaje", () => {
     const fila = screen.getByRole("row");
     expect(fila.tagName).toBe("TR");
     expect(screen.getByRole("rowheader", { name: /Luke Skywalker/ })).toBeInTheDocument();
+    expect(celdas()).toHaveLength(4);
   });
 
   test("el enlace conserva su rol y apunta a la ficha", () => {
@@ -65,19 +72,26 @@ describe("FilaPersonaje", () => {
     expect(avisos).toEqual([]);
   });
 
-  test("muestra el guion largo cuando el API no trae genero ni nacimiento", () => {
+  test("muestra cuantas peliculas aparece y las fechas de la primera y la ultima", () => {
     pintarFila();
 
-    const fila = screen.getByRole("row");
-    expect(fila).toHaveTextContent("Luke Skywalker");
-    expect(fila).toHaveTextContent("—");
+    expect(celdas()).toEqual([
+      "4",
+      "25 de mayo de 1977",
+      "25 de mayo de 1983",
+      "Ver detalle",
+    ]);
   });
 
-  test("muestra el genero y el anio cuando el personaje los trae", () => {
-    pintarFila({ id: "d2FyazI=", nombre: "Ayla Secura", genero: "female", anioNacimiento: "48BBY" });
+  test("el cero es un dato: sin peliculas muestra 0 y no el guion largo", () => {
+    pintarFila({ ...luke, apariciones: 0, primeraAparicion: null, ultimaAparicion: null });
 
-    const fila = screen.getByRole("row");
-    expect(fila).toHaveTextContent("Female");
-    expect(fila).toHaveTextContent("48BBY");
+    expect(celdas()).toEqual(["0", "—", "—", "Ver detalle"]);
+  });
+
+  test("muestra el guion largo cuando el API no trae apariciones", () => {
+    pintarFila({ ...luke, apariciones: null, primeraAparicion: null, ultimaAparicion: null });
+
+    expect(celdas()).toEqual(["—", "—", "—", "Ver detalle"]);
   });
 });
